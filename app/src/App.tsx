@@ -4,6 +4,7 @@ import { RichTextSection } from "./components/RichTextSection";
 import { VideoEmbed } from "./components/VideoEmbed";
 import { ValidationDemo } from "./components/validation/ValidationDemo";
 import { TranscriptSection } from "./components/TranscriptSection";
+import { EventStackSection } from "./components/EventStackSection";
 
 function SectionContent({ section }: { section: SectionConfig }) {
   switch (section.kind) {
@@ -15,6 +16,10 @@ function SectionContent({ section }: { section: SectionConfig }) {
       return <ValidationDemo />;
     case "transcript":
       return <TranscriptSection />;
+    case "event-stack":
+      return section.eventStack ? (
+        <EventStackSection config={section.eventStack} />
+      ) : null;
     default:
       return null;
   }
