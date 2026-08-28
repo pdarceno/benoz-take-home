@@ -190,3 +190,35 @@ The format deliberately cannot express:
 
 These limits keep the definition format small and predictable for unseen client
 definitions.
+
+## Running the submission SPA
+
+The hosted submission page lives in `app/` and imports the validation library
+directly — no backend or database required.
+
+```
+pnpm install
+pnpm dev       # local dev server (default http://localhost:5173)
+pnpm build     # outputs to app/dist/
+pnpm preview   # preview production build locally
+pnpm test      # validation library tests (unchanged)
+```
+
+### Configuring content
+
+Edit [`app/src/content/config.ts`](app/src/content/config.ts):
+
+- **Section titles** for all parts
+- **Section content** (HTML) for Parts 1 and 4–7 — edit the `content` field on each richtext section
+- **Loom embed URL** for Part 2 (`https://www.loom.com/embed/your-video-id`)
+- **Transcript files** and optional external link for Part 8
+
+Rich-text sections are read-only on the page. Word count is computed from the configured HTML content.
+
+Drop transcript files into [`public/transcripts/`](public/transcripts/) and register
+them in `config.ts`.
+
+### Deploying
+
+Run `pnpm build` and deploy the contents of `app/dist/` to Vercel, Netlify, or
+GitHub Pages.

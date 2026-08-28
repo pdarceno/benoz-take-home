@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .section-card {
+    @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200;
+  }
+
+  .field-label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+
+  .field-error {
+    @apply mt-1 text-sm text-red-600;
+  }
+
+  .rich-text-content h2 {
+    @apply mb-3 mt-6 text-xl font-semibold text-slate-900;
+  }
+
+  .rich-text-content p {
+    @apply mb-3 leading-relaxed text-slate-700;
+  }
+
+  .rich-text-content ul {
+    @apply mb-3 list-disc space-y-1 pl-6 text-slate-700;
+  }
+
+  .rich-text-content ol {
+    @apply mb-3 list-decimal space-y-1 pl-6 text-slate-700;
+  }
+
+  .rich-text-content strong {
+    @apply font-semibold text-slate-900;
+  }
+
+  .rich-text-content em {
+    @apply italic;
+  }
+}
