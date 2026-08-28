@@ -9,6 +9,7 @@ import {
 } from "./types";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const FILENAME_RE = /^[A-Za-z0-9._-]+$/;
 
 function isEmpty(value: unknown): boolean {
   return (
@@ -19,16 +20,37 @@ function isEmpty(value: unknown): boolean {
   );
 }
 
-function fieldHasError(errors: ValidationError[], fieldName: string): boolean {
-  return errors.some((e) => e.field === fieldName);
+function erroredFields(errors: ValidationError[]): Set<string> {
+  return new Set(errors.map((e) => e.field));
 }
 
 function isFieldUsable(
   fieldName: string,
   record: RecordData,
-  errors: ValidationError[]
+  errored: Set<string>
 ): boolean {
-  return !isEmpty(record[fieldName]) && !fieldHasError(errors, fieldName);
+  return !isEmpty(record[fieldName]) && !errored.has(fieldName);
+}
+
+/** Parse YYYY-MM-DD; rejects impossible calendar dates (e.g. 2026-02-30). */
+function parseDateString(value: string): Date | null {
+  if (!DATE_RE.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  if (parsed.toISOString().slice(0, 10) !== value) return null;
+  return parsed;
+}
+
+function isSafeFilename(value: string): boolean {
+  if (
+    value.includes("..") ||
+    value.includes("/") ||
+    value.includes("\\") ||
+    value.includes("\0")
+  ) {
+    return false;
+  }
+  return FILENAME_RE.test(value);
 }
 
 function validateField(field: FieldDefinition, value: unknown): ValidationError[] {
@@ -72,8 +94,7 @@ function validateField(field: FieldDefinition, value: unknown): ValidationError[
         err("Must be a date in YYYY-MM-DD format");
         break;
       }
-      const parsed = new Date(`${value}T00:00:00Z`);
-      if (Number.isNaN(parsed.getTime())) err("Not a real calendar date");
+      if (parseDateString(value) === null) err("Not a real calendar date");
       break;
     }
 
@@ -110,7 +131,11 @@ function validateField(field: FieldDefinition, value: unknown): ValidationError[
         err("Must be a filename");
         break;
       }
-      const ext = value.includes(".") ? value.split(".").pop()!.toLowerCase() : "";
+      if (!isSafeFilename(value)) {
+        err("Must be a filename");
+        break;
+      }
+      const ext = value.includes(".") ? (value.split(".").pop()?.toLowerCase() ?? "") : "";
       if (c.accepted !== undefined && !c.accepted.includes(ext))
         err(`File type not accepted: .${ext || "?"}`);
       break;
@@ -126,12 +151,13 @@ function validateConditionalRequired(
   errors: ValidationError[]
 ): ValidationError[] {
   const conditionalErrors: ValidationError[] = [];
+  const errored = erroredFields(errors);
 
   for (const field of fields) {
     const condition = field.required_when;
     if (!condition || field.required) continue;
 
-    if (!isFieldUsable(condition.field, record, errors)) continue;
+    if (!isFieldUsable(condition.field, record, errored)) continue;
 
     if (record[condition.field] !== condition.equals) continue;
 
@@ -144,10 +170,9 @@ function validateConditionalRequired(
 }
 
 function parseDateValue(value: unknown): number | null {
-  if (typeof value !== "string" || !DATE_RE.test(value)) return null;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.getTime();
+  if (typeof value !== "string") return null;
+  const parsed = parseDateString(value);
+  return parsed ? parsed.getTime() : null;
 }
 
 function comparableValues(
@@ -207,10 +232,11 @@ function validateCrossFieldRules(
   errors: ValidationError[]
 ): ValidationError[] {
   const ruleErrors: ValidationError[] = [];
+  const errored = erroredFields(errors);
 
   for (const rule of rules) {
-    if (!isFieldUsable(rule.left, record, errors)) continue;
-    if (!isFieldUsable(rule.right, record, errors)) continue;
+    if (!isFieldUsable(rule.left, record, errored)) continue;
+    if (!isFieldUsable(rule.right, record, errored)) continue;
 
     const values = comparableValues(record[rule.left], record[rule.right]);
     if (values === null) continue;

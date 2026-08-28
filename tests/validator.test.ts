@@ -137,6 +137,12 @@ describe("dates", () => {
     expect(
       errorsFor(validate(fleet, { ...base, service_date: "2026-13-40" }), "service_date")
     ).toHaveLength(1);
+    expect(
+      errorsFor(validate(fleet, { ...base, service_date: "2026-02-30" }), "service_date")
+    ).toEqual([{ field: "service_date", error: "Not a real calendar date" }]);
+    expect(
+      errorsFor(validate(fleet, { ...base, service_date: "2026-04-31" }), "service_date")
+    ).toEqual([{ field: "service_date", error: "Not a real calendar date" }]);
     expect(validate(fleet, { ...base, service_date: "2026-05-01" })).toEqual([]);
   });
 });
@@ -216,6 +222,9 @@ describe("booleans and files", () => {
     };
     expect(
       errorsFor(validate(venue, { ...base, floor_plan: "plan.docx" }), "floor_plan")
+    ).toHaveLength(1);
+    expect(
+      errorsFor(validate(venue, { ...base, floor_plan: "../../etc/passwd.pdf" }), "floor_plan")
     ).toHaveLength(1);
     expect(validate(venue, { ...base, floor_plan: "plan.PDF" })).toEqual([]);
   });
@@ -366,6 +375,50 @@ describe("cross-field rules", () => {
     expect(errorsFor(result, "end_date")).toHaveLength(1);
     expect(result.filter((e) => e.field === "end_date")).toHaveLength(1);
     expect(result.some((e) => e.error.includes("before start date"))).toBe(false);
+  });
+
+  it("reports on error_field when specified", () => {
+    const definition: ClientDefinition = {
+      client: "test",
+      record_type: "range",
+      fields: [
+        { name: "start_date", label: "Start", type: "date", required: true },
+        { name: "end_date", label: "End", type: "date", required: true },
+      ],
+      rules: [
+        {
+          type: "gte",
+          left: "end_date",
+          right: "start_date",
+          error_field: "start_date",
+          message: "Start must be on or before end",
+        },
+      ],
+    };
+    const result = validate(definition, {
+      start_date: "2026-05-10",
+      end_date: "2026-05-01",
+    });
+    expect(errorsFor(result, "start_date")).toEqual([
+      { field: "start_date", error: "Start must be on or before end" },
+    ]);
+    expect(errorsFor(result, "end_date")).toHaveLength(0);
+  });
+
+  it("supports lte cross-field rule type", () => {
+    const definition: ClientDefinition = {
+      client: "test",
+      record_type: "cap",
+      fields: [
+        { name: "min_value", label: "Min", type: "number", required: true },
+        { name: "max_value", label: "Max", type: "number", required: true },
+      ],
+      rules: [{ type: "lte", left: "min_value", right: "max_value" }],
+    };
+    expect(
+      validate(definition, { min_value: 5, max_value: 10 })
+    ).toEqual([]);
+    expect(errorsFor(validate(definition, { min_value: 10, max_value: 5 }), "min_value")).toHaveLength(1);
   });
 });
 
