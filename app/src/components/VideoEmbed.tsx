@@ -1,8 +1,23 @@
 import { loomEmbedUrl } from "../content/config";
 
+function isAllowedLoomEmbed(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "www.loom.com" &&
+      parsed.pathname.startsWith("/embed/")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function VideoEmbed() {
   const isConfigured =
-    loomEmbedUrl && !loomEmbedUrl.includes("YOUR_VIDEO_ID");
+    loomEmbedUrl &&
+    !loomEmbedUrl.includes("YOUR_VIDEO_ID") &&
+    isAllowedLoomEmbed(loomEmbedUrl);
 
   if (!isConfigured) {
     return (

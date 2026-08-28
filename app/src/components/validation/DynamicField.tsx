@@ -12,8 +12,8 @@ function FieldErrors({ errors }: { errors: string[] }) {
   if (errors.length === 0) return null;
   return (
     <div className="space-y-1">
-      {errors.map((error) => (
-        <p key={error} className="field-error" role="alert">
+      {errors.map((error, index) => (
+        <p key={`${error}-${index}`} className="field-error" role="alert">
           {error}
         </p>
       ))}
@@ -21,11 +21,15 @@ function FieldErrors({ errors }: { errors: string[] }) {
   );
 }
 
+function showRequiredIndicator(field: FieldDefinition): boolean {
+  return Boolean(field.required || field.required_when);
+}
+
 export function DynamicField({ field, value, errors, onChange }: DynamicFieldProps) {
   const label = (
     <label htmlFor={field.name} className="field-label">
       {field.label}
-      {(field.required || field.required_when) && (
+      {showRequiredIndicator(field) && (
         <span className="text-red-600" aria-hidden="true">
           {" "}
           *
@@ -123,7 +127,7 @@ export function DynamicField({ field, value, errors, onChange }: DynamicFieldPro
             />
             <span className="text-sm font-medium text-slate-700">
               {field.label}
-              {field.required && (
+              {showRequiredIndicator(field) && (
                 <span className="text-red-600" aria-hidden="true">
                   {" "}
                   *
@@ -164,7 +168,7 @@ export function DynamicField({ field, value, errors, onChange }: DynamicFieldPro
         <fieldset>
           <legend className="field-label mb-2">
             {field.label}
-            {field.required && (
+            {showRequiredIndicator(field) && (
               <span className="text-red-600" aria-hidden="true">
                 {" "}
                 *

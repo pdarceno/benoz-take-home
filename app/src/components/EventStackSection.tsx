@@ -1,9 +1,10 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useRef, useState, KeyboardEvent } from "react";
 import {
   EventStackConfig,
   StackCategory,
   StackDecision,
-} from "../content/config";
+} from "../content/types";
+import { HtmlContent } from "./HtmlContent";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -28,15 +29,6 @@ const CATEGORY_LABELS: Record<StackCategory, string> = {
 };
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as StackCategory[];
-
-function RichHtml({ html, className }: { html: string; className?: string }) {
-  return (
-    <div
-      className={className ?? "rich-text-content"}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
 
 function StackCard({ decision }: { decision: StackDecision }) {
   return (
@@ -114,15 +106,58 @@ interface EventStackSectionProps {
 
 export function EventStackSection({ config }: EventStackSectionProps) {
   const baseId = useId();
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [categoryFilter, setCategoryFilter] = useState<StackCategory | "all">(
     "all",
   );
 
+  const categoryCounts = useMemo(() => {
+    const counts = Object.fromEntries(
+      ALL_CATEGORIES.map((cat) => [cat, 0]),
+    ) as Record<StackCategory, number>;
+    for (const decision of config.decisions) {
+      counts[decision.category] += 1;
+    }
+    return counts;
+  }, [config.decisions]);
+
   const filteredDecisions =
     categoryFilter === "all"
       ? config.decisions
       : config.decisions.filter((d) => d.category === categoryFilter);
+
+  const focusTab = (index: number) => {
+    const tab = TABS[index];
+    if (!tab) return;
+    setActiveTab(tab.id);
+    tabRefs.current[index]?.focus();
+  };
+
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    let nextIndex = index;
+    switch (event.key) {
+      case "ArrowRight":
+        nextIndex = (index + 1) % TABS.length;
+        break;
+      case "ArrowLeft":
+        nextIndex = (index - 1 + TABS.length) % TABS.length;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = TABS.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    focusTab(nextIndex);
+  };
 
   return (
     <div className="event-stack">
@@ -131,7 +166,7 @@ export function EventStackSection({ config }: EventStackSectionProps) {
         aria-label="Event platform stack sections"
         className="stack-tabs"
       >
-        {TABS.map((tab) => {
+        {TABS.map((tab, index) => {
           const tabId = `${baseId}-tab-${tab.id}`;
           const panelId = `${baseId}-panel-${tab.id}`;
           const isSelected = activeTab === tab.id;
@@ -139,6 +174,9 @@ export function EventStackSection({ config }: EventStackSectionProps) {
             <button
               key={tab.id}
               id={tabId}
+              ref={(el) => {
+                tabRefs.current[index] = el;
+              }}
               type="button"
               role="tab"
               aria-selected={isSelected}
@@ -146,6 +184,7 @@ export function EventStackSection({ config }: EventStackSectionProps) {
               tabIndex={isSelected ? 0 : -1}
               className={`stack-tab${isSelected ? " stack-tab-active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
             >
               {tab.label}
             </button>
@@ -169,12 +208,12 @@ export function EventStackSection({ config }: EventStackSectionProps) {
           >
             {tab.id === "overview" && (
               <div className="space-y-6">
-                <RichHtml html={config.intro} />
+                <HtmlContent html={config.intro} />
                 <div className="stack-callout">
                   <h3 className="mb-3 text-base font-semibold text-slate-900">
                     Lesson from Virnew
                   </h3>
-                  <RichHtml html={config.virnewLesson} />
+                  <HtmlContent html={config.virnewLesson} />
                 </div>
               </div>
             )}
@@ -194,9 +233,7 @@ export function EventStackSection({ config }: EventStackSectionProps) {
                     All ({config.decisions.length})
                   </button>
                   {ALL_CATEGORIES.map((cat) => {
-                    const count = config.decisions.filter(
-                      (d) => d.category === cat,
-                    ).length;
+                    const count = categoryCounts[cat];
                     if (count === 0) return null;
                     return (
                       <button
@@ -234,7 +271,7 @@ export function EventStackSection({ config }: EventStackSectionProps) {
               </ol>
             )}
 
-            {tab.id === "scaling" && <RichHtml html={config.scalingNotes} />}
+            {tab.id === "scaling" && <HtmlContent html={config.scalingNotes} />}
 
             {tab.id === "rejected" && (
               <div>
