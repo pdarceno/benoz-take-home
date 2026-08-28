@@ -1,3 +1,5 @@
+import { RichTextSubsection } from "../content/config";
+
 function stripHtml(html: string): string {
   return html
     .replace(/<[^>]+>/g, " ")
@@ -12,11 +14,7 @@ function countWords(html: string): number {
   return text.split(/\s+/).length;
 }
 
-interface RichTextSectionProps {
-  content: string;
-}
-
-export function RichTextSection({ content }: RichTextSectionProps) {
+function RichTextBlock({ content }: { content: string }) {
   const wordCount = countWords(content);
 
   return (
@@ -30,4 +28,40 @@ export function RichTextSection({ content }: RichTextSectionProps) {
       </div>
     </div>
   );
+}
+
+interface RichTextSectionProps {
+  content?: string;
+  subsections?: RichTextSubsection[];
+  partNumber?: number;
+}
+
+export function RichTextSection({ content, subsections, partNumber }: RichTextSectionProps) {
+  if (subsections && subsections.length > 0) {
+    return (
+      <div className="space-y-8">
+        {subsections.map((subsection, index) => (
+          <article
+            key={subsection.id}
+            id={subsection.id}
+            className="scroll-mt-8"
+            aria-labelledby={`${subsection.id}-heading`}
+          >
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Part {partNumber}.{index + 1}
+            </p>
+            <h3
+              id={`${subsection.id}-heading`}
+              className="mb-4 text-lg font-semibold text-slate-900"
+            >
+              {subsection.title}
+            </h3>
+            <RichTextBlock content={subsection.content} />
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  return <RichTextBlock content={content ?? ""} />;
 }
