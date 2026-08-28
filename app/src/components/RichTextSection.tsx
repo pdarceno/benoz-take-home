@@ -1,4 +1,6 @@
-import { RichTextSubsection } from "../content/config";
+import { RichTextSubsection } from "../content/types";
+import { HtmlContent } from "./HtmlContent";
+import { useMemo } from "react";
 
 function stripHtml(html: string): string {
   return html
@@ -15,14 +17,11 @@ function countWords(html: string): number {
 }
 
 function RichTextBlock({ content }: { content: string }) {
-  const wordCount = countWords(content);
+  const wordCount = useMemo(() => countWords(content), [content]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-      <div
-        className="rich-text-content px-4 py-4"
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+      <HtmlContent html={content} className="rich-text-content px-4 py-4" />
       <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
         {wordCount} {wordCount === 1 ? "word" : "words"}
       </div>
@@ -33,7 +32,7 @@ function RichTextBlock({ content }: { content: string }) {
 interface RichTextSectionProps {
   content?: string;
   subsections?: RichTextSubsection[];
-  partNumber?: number;
+  partNumber: number;
 }
 
 export function RichTextSection({ content, subsections, partNumber }: RichTextSectionProps) {

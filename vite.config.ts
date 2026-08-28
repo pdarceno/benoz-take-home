@@ -16,5 +16,24 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "app/dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/dompurify")) return "dompurify";
+          if (
+            id.includes("validation/ValidationDemo") ||
+            id.includes("validation/demoFixtures")
+          ) {
+            return "validation-demo";
+          }
+          if (
+            id.includes("EventStackSection") ||
+            id.includes("part-5-event-stack")
+          ) {
+            return "event-stack";
+          }
+        },
+      },
+    },
   },
 });

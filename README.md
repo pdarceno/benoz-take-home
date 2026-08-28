@@ -206,10 +206,13 @@ pnpm test      # validation library tests (unchanged)
 
 ### Configuring content
 
-Edit [`app/src/content/config.ts`](app/src/content/config.ts):
+Edit content under [`app/src/content/`](app/src/content/):
 
+- **[`config.ts`](app/src/content/config.ts)** — re-exports; entry point for imports
+- **[`sections.ts`](app/src/content/sections.ts)** — section list assembly
+- **[`part-1.ts`](app/src/content/part-1.ts) … [`part-6-7.ts`](app/src/content/part-6-7.ts), [`part-5-event-stack.ts`](app/src/content/part-5-event-stack.ts)** — per-part copy
+- **[`site-meta.ts`](app/src/content/site-meta.ts)** — Loom URL and transcript file registry
 - **Section titles** for all parts
-- **Section content** (HTML) for Parts 1 and 4–7 — edit the `content` field on each richtext section
 - **Loom embed URL** for Part 2 (`https://www.loom.com/embed/your-video-id`)
 - **Transcript files** and optional external link for Part 8
 
