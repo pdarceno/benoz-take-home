@@ -42,6 +42,7 @@ describe("required fields", () => {
     const result = validate(venue, {
       booking_ref: "BK123456",
       hall: "main",
+      booking_type: "single_day",
       event_date: "2026-10-10",
       expected_guests: 40,
     });
@@ -67,6 +68,7 @@ describe("text constraints", () => {
       course_level: "advanced",
       modules_selected: ["lab", "exam"],
       start_date: "2026-09-01",
+      end_date: "2026-09-15",
     };
     expect(
       errorsFor(validate(course, { ...base, enrollment_code: "abc" }), "enrollment_code")
@@ -112,6 +114,7 @@ describe("number constraints", () => {
     const base = {
       booking_ref: "BK000001",
       hall: "annex",
+      booking_type: "single_day",
       event_date: "2026-12-01",
     };
     expect(
@@ -143,6 +146,7 @@ describe("choice and multi_choice", () => {
     const record = {
       booking_ref: "BK123456",
       hall: "garden",
+      booking_type: "single_day",
       event_date: "2026-10-10",
       expected_guests: 10,
     };
@@ -206,6 +210,7 @@ describe("booleans and files", () => {
     const base = {
       booking_ref: "BK123456",
       hall: "main",
+      booking_type: "single_day",
       event_date: "2026-10-10",
       expected_guests: 10,
     };
@@ -238,5 +243,198 @@ describe("fail-closed behaviour", () => {
     };
     expect(validate(adHoc, { title: "hello" })).toEqual([]);
     expect(errorsFor(validate(adHoc, {}), "title")).toHaveLength(1);
+  });
+});
+
+describe("conditional required", () => {
+  const definition: ClientDefinition = {
+    client: "test",
+    record_type: "booking",
+    fields: [
+      {
+        name: "event_type",
+        label: "Event type",
+        type: "choice",
+        required: true,
+        options: ["single_day", "multi_day"],
+      },
+      {
+        name: "end_date",
+        label: "End date",
+        type: "date",
+        required: false,
+        required_when: { field: "event_type", equals: "multi_day" },
+      },
+    ],
+  };
+
+  it("requires the target field when the condition matches and it is empty", () => {
+    const result = validate(definition, { event_type: "multi_day" });
+    expect(errorsFor(result, "end_date")).toEqual([
+      { field: "end_date", error: "This field is required" },
+    ]);
+  });
+
+  it("does not require the target field when the condition does not match", () => {
+    const result = validate(definition, { event_type: "single_day" });
+    expect(errorsFor(result, "end_date")).toHaveLength(0);
+  });
+
+  it("skips conditional required when the condition field is missing", () => {
+    const result = validate(definition, {});
+    expect(errorsFor(result, "end_date")).toHaveLength(0);
+    expect(errorsFor(result, "event_type")).toHaveLength(1);
+  });
+
+  it("skips conditional required when the condition field has its own validation error", () => {
+    const result = validate(definition, { event_type: "invalid" });
+    expect(errorsFor(result, "end_date")).toHaveLength(0);
+    expect(errorsFor(result, "event_type")).toHaveLength(1);
+  });
+});
+
+describe("cross-field rules", () => {
+  const dateDefinition: ClientDefinition = {
+    client: "test",
+    record_type: "booking",
+    fields: [
+      { name: "start_date", label: "Start date", type: "date", required: true },
+      { name: "end_date", label: "End date", type: "date", required: true },
+    ],
+    rules: [
+      {
+        type: "gte",
+        left: "end_date",
+        right: "start_date",
+        message: "End date must not be before start date",
+      },
+    ],
+  };
+
+  const numberDefinition: ClientDefinition = {
+    client: "test",
+    record_type: "range",
+    fields: [
+      { name: "min_value", label: "Minimum", type: "number", required: true },
+      { name: "max_value", label: "Maximum", type: "number", required: true },
+    ],
+    rules: [{ type: "gte", left: "max_value", right: "min_value" }],
+  };
+
+  it("passes when end is on or after start for dates", () => {
+    const result = validate(dateDefinition, {
+      start_date: "2026-05-01",
+      end_date: "2026-05-10",
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("fails when end is before start for dates", () => {
+    const result = validate(dateDefinition, {
+      start_date: "2026-05-10",
+      end_date: "2026-05-01",
+    });
+    expect(errorsFor(result, "end_date")).toEqual([
+      {
+        field: "end_date",
+        error: "End date must not be before start date",
+      },
+    ]);
+  });
+
+  it("passes when max is greater than or equal to min for numbers", () => {
+    const result = validate(numberDefinition, { min_value: 1, max_value: 10 });
+    expect(result).toEqual([]);
+  });
+
+  it("fails when max is less than min for numbers", () => {
+    const result = validate(numberDefinition, { min_value: 10, max_value: 1 });
+    expect(errorsFor(result, "max_value")).toHaveLength(1);
+  });
+
+  it("skips cross-field rules when a referenced field has a phase 1 error", () => {
+    const result = validate(dateDefinition, {
+      start_date: "14:30",
+      end_date: "2026-05-01",
+    });
+    expect(errorsFor(result, "start_date")).toHaveLength(1);
+    expect(errorsFor(result, "end_date")).toHaveLength(0);
+  });
+
+  it("skips cross-field rules when a referenced field is empty", () => {
+    const result = validate(dateDefinition, { start_date: "2026-05-01" });
+    expect(errorsFor(result, "end_date")).toHaveLength(1);
+    expect(result.filter((e) => e.field === "end_date")).toHaveLength(1);
+    expect(result.some((e) => e.error.includes("before start date"))).toBe(false);
+  });
+});
+
+describe("evaluation order", () => {
+  const definition: ClientDefinition = {
+    client: "test",
+    record_type: "booking",
+    fields: [
+      {
+        name: "event_type",
+        label: "Event type",
+        type: "choice",
+        required: true,
+        options: ["single_day", "multi_day"],
+      },
+      { name: "start_date", label: "Start date", type: "date", required: true },
+      {
+        name: "end_date",
+        label: "End date",
+        type: "date",
+        required: false,
+        required_when: { field: "event_type", equals: "multi_day" },
+      },
+    ],
+    rules: [
+      {
+        type: "gte",
+        left: "end_date",
+        right: "start_date",
+        message: "End date must not be before start date",
+      },
+    ],
+  };
+
+  it("shows start_date and conditional required errors when start_date is invalid", () => {
+    const result = validate(definition, {
+      event_type: "multi_day",
+      start_date: "14:30",
+    });
+    expect(errorsFor(result, "start_date")).toHaveLength(1);
+    expect(errorsFor(result, "end_date")).toEqual([
+      { field: "end_date", error: "This field is required" },
+    ]);
+    expect(result.some((e) => e.error.includes("before start date"))).toBe(false);
+  });
+
+  it("shows only the conditional required error when end_date is empty", () => {
+    const result = validate(definition, {
+      event_type: "multi_day",
+      start_date: "2026-05-10",
+    });
+    expect(errorsFor(result, "end_date")).toEqual([
+      { field: "end_date", error: "This field is required" },
+    ]);
+    expect(result.some((e) => e.error.includes("before start date"))).toBe(false);
+  });
+
+  it("shows only the cross-field error when both dates are valid but out of order", () => {
+    const result = validate(definition, {
+      event_type: "multi_day",
+      start_date: "2026-05-10",
+      end_date: "2026-05-01",
+    });
+    expect(errorsFor(result, "end_date")).toEqual([
+      {
+        field: "end_date",
+        error: "End date must not be before start date",
+      },
+    ]);
+    expect(result.filter((e) => e.field === "end_date")).toHaveLength(1);
   });
 });

@@ -7,12 +7,22 @@
     { "name": "vehicle_kind", "label": "Vehicle kind", "type": "choice", "required": true,
       "options": ["van", "truck", "car", "motorcycle"] },
     { "name": "service_date", "label": "Service date", "type": "date", "required": true },
+    { "name": "next_service_date", "label": "Next service date", "type": "date", "required": false },
     { "name": "odometer_km", "label": "Odometer (km)", "type": "number", "required": true,
       "constraints": { "min": 0, "max": 2000000 } },
     { "name": "roadworthy", "label": "Roadworthy after service", "type": "boolean", "required": false },
     { "name": "mechanic_notes", "label": "Mechanic notes", "type": "long_text", "required": false,
-      "constraints": { "max_length": 1500 } },
+      "constraints": { "max_length": 1500 },
+      "required_when": { "field": "roadworthy", "equals": false } },
     { "name": "invoice_file", "label": "Invoice", "type": "file", "required": false,
       "constraints": { "accepted": ["pdf", "jpg"] } }
+  ],
+  "rules": [
+    {
+      "type": "gte",
+      "left": "next_service_date",
+      "right": "service_date",
+      "message": "Next service date must not be before the service date"
+    }
   ]
 }

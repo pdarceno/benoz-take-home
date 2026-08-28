@@ -1,5 +1,7 @@
 import {
   ClientDefinition,
+  CrossFieldRule,
+  CrossFieldRuleType,
   FieldDefinition,
   RecordData,
   ValidationError,
@@ -15,6 +17,18 @@ function isEmpty(value: unknown): boolean {
     (typeof value === "string" && value.trim() === "") ||
     (Array.isArray(value) && value.length === 0)
   );
+}
+
+function fieldHasError(errors: ValidationError[], fieldName: string): boolean {
+  return errors.some((e) => e.field === fieldName);
+}
+
+function isFieldUsable(
+  fieldName: string,
+  record: RecordData,
+  errors: ValidationError[]
+): boolean {
+  return !isEmpty(record[fieldName]) && !fieldHasError(errors, fieldName);
 }
 
 function validateField(field: FieldDefinition, value: unknown): ValidationError[] {
@@ -106,6 +120,112 @@ function validateField(field: FieldDefinition, value: unknown): ValidationError[
   return errors;
 }
 
+function validateConditionalRequired(
+  fields: FieldDefinition[],
+  record: RecordData,
+  errors: ValidationError[]
+): ValidationError[] {
+  const conditionalErrors: ValidationError[] = [];
+
+  for (const field of fields) {
+    const condition = field.required_when;
+    if (!condition || field.required) continue;
+
+    if (!isFieldUsable(condition.field, record, errors)) continue;
+
+    if (record[condition.field] !== condition.equals) continue;
+
+    if (isEmpty(record[field.name])) {
+      conditionalErrors.push({ field: field.name, error: "This field is required" });
+    }
+  }
+
+  return conditionalErrors;
+}
+
+function parseDateValue(value: unknown): number | null {
+  if (typeof value !== "string" || !DATE_RE.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getTime();
+}
+
+function comparableValues(
+  left: unknown,
+  right: unknown
+): { left: number; right: number } | null {
+  if (typeof left === "number" && typeof right === "number" && !Number.isNaN(left) && !Number.isNaN(right)) {
+    return { left, right };
+  }
+
+  const leftDate = parseDateValue(left);
+  const rightDate = parseDateValue(right);
+  if (leftDate !== null && rightDate !== null) {
+    return { left: leftDate, right: rightDate };
+  }
+
+  return null;
+}
+
+function defaultRuleMessage(type: CrossFieldRuleType, left: string, right: string): string {
+  switch (type) {
+    case "gte":
+      return `${left} must be greater than or equal to ${right}`;
+    case "lte":
+      return `${left} must be less than or equal to ${right}`;
+    case "gt":
+      return `${left} must be greater than ${right}`;
+    case "lt":
+      return `${left} must be less than ${right}`;
+    case "eq":
+      return `${left} must equal ${right}`;
+    case "neq":
+      return `${left} must not equal ${right}`;
+  }
+}
+
+function rulePasses(type: CrossFieldRuleType, left: number, right: number): boolean {
+  switch (type) {
+    case "gte":
+      return left >= right;
+    case "lte":
+      return left <= right;
+    case "gt":
+      return left > right;
+    case "lt":
+      return left < right;
+    case "eq":
+      return left === right;
+    case "neq":
+      return left !== right;
+  }
+}
+
+function validateCrossFieldRules(
+  rules: CrossFieldRule[],
+  record: RecordData,
+  errors: ValidationError[]
+): ValidationError[] {
+  const ruleErrors: ValidationError[] = [];
+
+  for (const rule of rules) {
+    if (!isFieldUsable(rule.left, record, errors)) continue;
+    if (!isFieldUsable(rule.right, record, errors)) continue;
+
+    const values = comparableValues(record[rule.left], record[rule.right]);
+    if (values === null) continue;
+
+    if (!rulePasses(rule.type, values.left, values.right)) {
+      ruleErrors.push({
+        field: rule.error_field ?? rule.left,
+        error: rule.message ?? defaultRuleMessage(rule.type, rule.left, rule.right),
+      });
+    }
+  }
+
+  return ruleErrors;
+}
+
 /**
  * Validate one record against a client definition.
  * Returns an empty array when the record is valid.
@@ -119,6 +239,7 @@ export function validate(
 ): ValidationResult {
   const errors: ValidationError[] = [];
 
+  // Phase 1: per-field validation (type, constraints, static required)
   for (const field of definition.fields) {
     errors.push(...validateField(field, record[field.name]));
   }
@@ -128,6 +249,19 @@ export function validate(
     if (!known.has(key)) {
       errors.push({ field: key, error: "Unknown field" });
     }
+  }
+
+  // Phase 2: conditional required
+  const conditionalErrors = validateConditionalRequired(
+    definition.fields,
+    record,
+    errors
+  );
+  errors.push(...conditionalErrors);
+
+  // Phase 3: cross-field rules
+  if (definition.rules) {
+    errors.push(...validateCrossFieldRules(definition.rules, record, errors));
   }
 
   return errors;
