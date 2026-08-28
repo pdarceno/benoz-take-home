@@ -1,5 +1,5 @@
 # Event management system design
-_Exported on 8/28/2026 at 23:30:59 GMT+8 from Cursor (3.7.21)_
+_Exported on 8/28/2026 at 23:37:12 GMT+8 from Cursor (3.7.21)_
 
 ---
 
@@ -884,4 +884,173 @@ That matches Part 6’s honesty **and** sounds architecturally mature.
 - **GCP is a legitimate alternative** for your exact story (small team, bursty HTTP); saying that out loud can **raise** your score.
 
 If you switch to Agent mode, I can propose exact replacement copy for the `compute`, `object-storage`, and `scalingNotes` entries in `part-5-event-stack.ts` without changing the rest of the stack.
+
+---
+
+**User**
+
+/writing-commit-messages 
+
+---
+
+**Cursor**
+
+Checking uncommitted changes to draft commit message(s).
+
+
+Here are commit messages for the uncommitted work since `3442f23`, grouped into **3 logical commits** (validator / app fixes / refactor). A 4th optional commit covers the large transcript update.
+
+---
+
+### Commit 1 — validator hardening
+
+**Files:** `lib/validator.ts`, `tests/validator.test.ts`
+
+```
+fix(validator): reject impossible dates and unsafe filenames
+
+Round-trip YYYY-MM-DD through Date to catch calendar-invalid values.
+Use a Set for errored fields in cross-field validation. Reject path
+traversal and disallowed characters in filename fields.
+```
+
+---
+
+### Commit 2 — code review fixes (demo, security, a11y)
+
+**Files:**
+- `app/src/components/validation/ValidationDemo.tsx`
+- `app/src/components/validation/DynamicField.tsx`
+- `app/src/components/validation/demoFixtures.ts` (new)
+- `app/index.html`
+- `app/src/components/TranscriptSection.tsx`
+- `app/src/components/VideoEmbed.tsx`
+- `app/src/components/EventStackSection.tsx`
+
+```
+fix(app): address review findings in demo and embeds
+
+Reset validation errors on client tab switch. Show required_when
+indicators on boolean and multi_choice fields. Add CSP, Loom allowlist,
+lazy transcript fetch with HTTPS-only externals, and keyboard/accordion
+a11y on the event stack section.
+```
+
+---
+
+### Commit 3 — refactor (content split, sanitization, lazy loading)
+
+**Files:**
+- `app/src/content/types.ts`, `sections.ts`, `site-meta.ts`, `part-*.ts` (new)
+- `app/src/content/config.ts`
+- `app/src/components/HtmlContent.tsx` (new)
+- `app/src/components/LazySection.tsx` (new)
+- `app/src/components/RichTextSection.tsx`
+- `app/src/App.tsx`
+- `vite.config.ts`
+- `package.json`, `pnpm-lock.yaml`
+- `README.md`
+
+```
+refactor(app): split content, sanitize HTML, lazy-load sections
+
+Move section config into typed per-part modules. Sanitize rich text via
+DOMPurify. Defer heavy section bundles with IntersectionObserver and
+Vite manual chunks. Upgrade vitest and playwright; add dompurify.
+```
+
+---
+
+### Optional commit 4 — transcript only
+
+**Files:** `public/transcripts/cursor_event_management_system_design.md`
+
+```
+docs: expand Part 5 event stack design transcript
+```
+
+---
+
+### Suggested commands
+
+```bash
+# 1
+git add lib/validator.ts tests/validator.test.ts
+git commit -m "$(cat <<'EOF'
+fix(validator): reject impossible dates and unsafe filenames
+
+Round-trip YYYY-MM-DD through Date to catch calendar-invalid values.
+Use a Set for errored fields in cross-field validation. Reject path
+traversal and disallowed characters in filename fields.
+EOF
+)"
+
+# 2
+git add app/src/components/validation/ app/index.html \
+  app/src/components/TranscriptSection.tsx \
+  app/src/components/VideoEmbed.tsx \
+  app/src/components/EventStackSection.tsx
+git commit -m "$(cat <<'EOF'
+fix(app): address review findings in demo and embeds
+
+Reset validation errors on client tab switch. Show required_when
+indicators on boolean and multi_choice fields. Add CSP, Loom allowlist,
+lazy transcript fetch with HTTPS-only externals, and keyboard/accordion
+a11y on the event stack section.
+EOF
+)"
+
+# 3
+git add app/src/content/ app/src/components/HtmlContent.tsx \
+  app/src/components/LazySection.tsx app/src/components/RichTextSection.tsx \
+  app/src/App.tsx vite.config.ts package.json pnpm-lock.yaml README.md
+git commit -m "$(cat <<'EOF'
+refactor(app): split content, sanitize HTML, lazy-load sections
+
+Move section config into typed per-part modules. Sanitize rich text via
+DOMPurify. Defer heavy section bundles with IntersectionObserver and
+Vite manual chunks. Upgrade vitest and playwright; add dompurify.
+EOF
+)"
+
+# 4 (optional)
+git add public/transcripts/cursor_event_management_system_design.md
+git commit -m "$(cat <<'EOF'
+docs: expand Part 5 event stack design transcript
+EOF
+)"
+```
+
+---
+
+**2-commit squash alternative** (if you prefer fewer commits):
+
+1. `fix: harden validator and app review findings` — commits 1 + 2 combined  
+2. `refactor(app): split content, sanitize HTML, lazy sections` — commit 3 (+ optional 4)
+
+Say if you want these created in the repo (3 or 4 commits).
+
+---
+
+**User**
+
+yes, separate into 4 is okay.
+
+---
+
+**Cursor**
+
+Creating the four commits in the planned order.
+
+
+All four commits are on `main`. Working tree is clean; branch is 4 commits ahead of `origin/main`.
+
+| Commit | Message |
+|--------|---------|
+| `44e50cc` | `fix(validator): reject impossible dates and unsafe filenames` |
+| `910ff81` | `fix(app): address review findings in demo and embeds` |
+| `cbcd0b0` | `refactor(app): split content, sanitize HTML, lazy-load sections` |
+| `cadc8e5` | `docs: expand Part 5 event stack design transcript` |
+
+Say if you want these pushed or opened as a PR.
 
