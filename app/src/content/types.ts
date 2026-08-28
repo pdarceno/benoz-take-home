@@ -57,6 +57,6 @@ export type SectionConfig =
       subsections?: RichTextSubsection[];
     })
   | (SectionBase & { kind: "video" })
-  | (SectionBase & { kind: "validation" })
+  | (SectionBase & { kind: "validation"; intro?: string })
   | (SectionBase & { kind: "transcript" })
   | (SectionBase & { kind: "event-stack"; eventStack: EventStackConfig });

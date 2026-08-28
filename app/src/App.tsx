@@ -42,7 +42,7 @@ function SectionContent({
     case "video":
       return <VideoEmbed />;
     case "validation":
-      return <ValidationDemo />;
+      return <ValidationDemo intro={section.intro} />;
     case "transcript":
       return <TranscriptSection />;
     case "event-stack":

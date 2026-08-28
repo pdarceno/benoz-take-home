@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { validate } from "@lib/validator";
 import { ClientDefinition, RecordData, ValidationError } from "@lib/types";
+import { HtmlContent } from "../HtmlContent";
 import { ClientTabs } from "./ClientTabs";
 import { DynamicField } from "./DynamicField";
 import { ValidationErrors } from "./ValidationErrors";
@@ -44,7 +45,11 @@ function RulesPanel({ definition }: { definition: ClientDefinition }) {
   );
 }
 
-export function ValidationDemo() {
+interface ValidationDemoProps {
+  intro?: string;
+}
+
+export function ValidationDemo({ intro }: ValidationDemoProps) {
   const [activeId, setActiveId] = useState(clients[0].id);
   const [records, setRecords] = useState<Record<string, RecordData>>(() =>
     Object.fromEntries(clients.map((client) => [client.id, emptyRecord(client.definition)]))
@@ -97,6 +102,8 @@ export function ValidationDemo() {
 
   return (
     <div className="space-y-6">
+      {intro && <HtmlContent html={intro} className="rich-text-content" />}
+
       <ClientTabs clients={clients} activeId={activeId} onChange={setActiveId} />
 
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
